@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="mpy.springcloud.dao.PaymentDao">
+    <resultMap id="BaseResultMap" type="mpy.springcloud.pojo.Payment">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="serial" property="serial" jdbcType="VARCHAR"/>
+    </resultMap>
+    
+    <select id="getPaymentById" resultMap="BaseResultMap">
+        select id,serial FROM payment where id = #{id}
+    </select>
+
+    <insert id="addPayment" parameterType="mpy.springcloud.pojo.Payment">
+        INSERT  INTO payment(serial) values(#{serial})
+    </insert>
+    
+</mapper>
