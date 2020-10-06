@@ -1,0 +1,657 @@
+	
+						/*********************基本命令操作**********************/	
+--查看防火墙状态
+	firewall-cmd --state
+	
+--关闭防火墙
+	systemctl stop firewalld【.service】
+	
+--禁止firewall开机启动
+	systemctl disable firewalld【.service】
+	
+--查看进程
+	ps -ef  
+	ps -aux
+
+--查看开放的端口号
+	firewall-cmd --list-all
+	
+--设置开放的端口号
+	CentOS8：
+		firewall-cmd --add-service=http --permanent
+		sudo firewall-cmd --add-port=80/tcp --permanent
+	
+	CentOS6:
+		vim /etc/sysconfig/iptables/ 进入编辑模式，将要添加的端口号加进去
+		命令模式：
+			iptables -A INPUT -p tcp --dport 端口号 -j ACCEPT
+			接着执行	
+				/etc/init.d/iptables save
+			将其保存到配置文件中
+	
+--重启防火墙
+	firewall-cmd --reload
+	
+--查看所有系统服务
+	systemctl list-unit-files  --->CentOS8
+	chkconfig --list		   --->CentOS6
+	
+	
+--输入命令直接上传或下载文件   
+    yum install lrzsz
+		rz -y 上传文件 到linux
+		sz -y 文件名 下载文件 到windows
+		
+		
+--查询软件是否被安装过
+	rpm -qa | grep xxx
+	
+--删除某个软件包
+	rpm -e xxx   【--nodeps】(强制删除)
+	
+	
+--更新yum软件包索引
+	yum makecache fast
+	
+	
+--查看磁盘挂载情况
+	lsblk
+	添加挂载点
+		mount /dev/xxx(需被挂载的文件)	目地路径(多为/mnt下)
+	取消挂载点
+		umount 已被挂载的路径
+		
+		
+--计划任务(crontab)
+	参数选项
+		-l 列出指定用户的计划任务列表
+		-e 编辑指定用户的计划任务
+		-u 指定用户，不指定，则为当前用户
+		-r 删除指定用户的计划任务列表
+	crontab [-l/-e]
+	
+	语法规则
+		以行为单位，一行即一个计划
+		分 时 日 月 周 需要执行的命令
+		如每天的0点0分执行reboot命令
+			0 0 * * * reboot
+			
+			取值范围
+				分：0-59
+				时：0-23
+				日：1-31
+				月：1-12
+				周：0-6
+			四个符号
+				*：表示取值范围中的任一值
+				-：做连续区间表达式，如1-7
+				/: 表示每多少个，如每10分钟一次，*/10
+				,: 表示取多个值，比如在1点，6点执行，0 1,6 * * *
+	
+	
+--查看Linux内核版本
+	uname -r
+	
+--查看CentOS版本
+	cat /etc/redhat-release
+	
+
+--常用工具库安装
+	1.安装vim
+		yum install vim -y
+	2.安装unzip
+		yum install unzip -y
+	3.安装ifconfig
+		yum install net-tools -y
+			
+						/*********************MYSQL操作**********************/
+--安装mysql
+	dnf install @mysql
+	--@mysql模块将安装MySQL及其所有依赖项
+
+--安装完成后，通过运行以下命令来启动MySQL服务并使它在启动时自动启动：	
+	systemctl enable --now mysqld
+	
+--启动mysql
+	systemctl start mysqld
+
+--要检查MySQL服务器是否正在运行：
+	systemctl status mysqld
+	
+--运行mysql_secure_installation脚本，该脚本执行一些与安全性相关的操作并设置MySQL根密码：
+	mysql_secure_installation
+	
+--登陆数据库
+	mysql -u root -p
+	
+--修改密码
+	1.查看mysql校验规则
+		SHOW VARIABLES LIKE 'validate_password%'; 
+	2.可更改密码长度设定
+		set global validate_password.length=6
+	3.更改密码
+		ALTER USER 'root'@'localhost' IDENTIFIED BY 'xxxxxx'; 
+		
+--查看编码
+	show variables like 'character%';
+	
+	
+--注：由于CentOS 8中的某些客户端工具和库与caching_sha2_password方法不兼容，因此CentOS 8存储库中包含的MySQL 8.0服务器设置为使用旧的mysql_native_password身份验证插件，该方法在上游MySQL 8.0发行版中设置为默认。
+	  对于大多数设置，mysql_native_password方法应该没问题，但是，如果你想将默认身份验证插件更改为caching_sha2_password，这样可以更快并提供更好的安全性，
+	  请打开以下配置文件：
+			vim /etc/my.cnf.d/mysql-default-authentication-plugin.cnf	
+	  将default_authentication_plugin的值更改为caching_sha2_password：
+		  [mysqld]
+		  default_authentication_plugin=caching_sha2_password
+	  关闭并保存文件，然后重新启动MySQL服务器以使更改生效：
+	  systemctl restart mysqld
+	  
+	  
+	  CentOS6下安装：
+		先执行 yum -y install make gcc-c++ cmake bison-devel ncurses-devel
+		后再进行mysql安装
+		解压mysql.tar文件，进入mysql目录执行(若提示无cmake指令，则执行yum -y install cmake)
+			1.编译
+				cmake -DCMAKE_INSTALL_PREFIX=/usr/local/mysql -DMYSQL_DATADIR=/usr/local/mysql/data -DSYSCONFDIR=/etc -DWITH_MYISAM_STORAGE_ENGINE=1 -DWITH_INNOBASE_STORAGE_ENGINE=1 -DWITH_MEMORY_STORAGE_ENGINE=1 -DWITH_READLINE=1 -DMYSQL_UNIX_ADDR=/var/lib/mysql/mysql.sock -DMYSQL_TCP_PORT=3306 -DENABLED_LOCAL_INFILE=1 -DWITH_PARTITION_STORAGE_ENGINE=1 -DEXTRA_CHARSETS=all -DDEFAULT_CHARSET=utf8 -DDEFAULT_COLLATION=utf8_general_ci
+			2.执行编译并安装
+				make && make install
+			3.创建用户组
+				groupadd mysql
+			4.创建mysql组的用户
+				useradd mysql mysql
+			5.修改/usr/local/mysql的所属组和用户
+				chown mysql:mysql /usr/local/mysql
+			6.初始化配置(进入到/usr/local/mysql目录下)
+				scripts/mysql_install_db --basedir=/usr/local/mysql --datadir=/usr/local/mysql/data --user=mysql
+			7.运行mysql(第一次运行)
+				*cp support-files/mysql.server /etc/init.d/mysql
+				*chkconfig mysql on (设置默认自启动)
+				*service mysql start(启动Mysql服务)
+				*进入到/mysql/bin目录下，执行./mysql -u root -p进入mysql，默认密码为空
+				*修改密码，set password = password('xxxxxx');
+				
+			8.配置/etc/profile的PATH环境变量，将/usr/local/mysql/bin路径添加进PATH中，使用source /etc/profile更新文件
+			
+			
+			
+	  
+	  
+						/*********************nginx操作**********************/
+--nginx安装	  
+	 1.先安装依赖
+		*yum install -y pcre pcre-devel
+		*yum install -y zlib zlib-devel
+		*yum install -y openssl openssl-devel
+		*./configure
+		*安装好后，执行 make && make install
+		若执行不了make命令，则先执行yum install -y gcc gcc-c++，安装好后，再执行 make && make install
+	 2.nginx安装，同pcre安装，注CentOS若是高版本(8版本)，执行./configure会报错，因此nginx的版本不能太低，如1.12版不可用
+	 	
+--nginx命令(前提是进入到/usr/local/nginx/sbin下)
+	*查看nginx版本号---- ./nginx -v
+	*启动nginx---- 		 ./nginx
+	*关闭nginx---- 		 ./nginx -s stop
+	*重新加载nginx----	 ./nginx -s reload
+	
+	
+	
+	
+	
+	
+	
+						/*********************ftp操作**********************/
+--ftp安装
+	1.安装ftp服务端
+		yum -y install ftp
+	2.安装ftp客户端
+		yum -y install lftp
+	3.默认的共享目录位置
+		/var/ftp/pub
+	4./etc/vsftpd/ 中项目文件作用
+		*ftpusers-----> 指定哪些用户不可访问ftp服务，即黑名单
+		*user_list----> 指定哪些用户可以访问ftp服务，即白名单
+	5.给ftp创建一个用户
+		useradd ftp用户
+		passwd  ftp用户
+	6.查看ftp的一些功能是否开启
+		getsebool -a | grep ftp
+	7.将 allow_ftpd_full_access 和 ftp_home_dir 设置成 on
+		setsebool -P allow_ftpd_full_access on
+		setsebool -P ftp_home_dir on
+	8.关闭匿名访问,修改/etc/vsftpd/vsftpd.conf配置文件
+		将 anonymous_enable值设置成NO
+	9.指定端口范围，修改/etc/vsftpd/vsftpd.conf配置文件
+		添加 pasv_min_port=30000、pasv_max_port=30999（端口号随意设置一个范围）
+	
+	
+--命令操作
+	*重启服务
+		service vsftpd restart
+	*设置自动启动
+		chkconfig vsftpd on 
+	*输入 lftp IP地址 可直接进行访问
+		如 lftp 192.168.206.130
+	
+	
+	
+
+	
+							/*********************zookeeper操作**********************/
+--安装
+	1.解压zookeeper压缩文件
+	2.复制conf文件里的zk.sample.cfg成zoo.cfg
+	3.修改zoo.cfg配置文件的内容
+		--dataDir=xxxxxx
+		--dataLogDir=xxxxxx(若需要记录日志)
+	
+--命令操作
+	1.打开zk服务端，执行zkServer.sh start
+	2.打开zk客户端, 执行zkCli.sh [-server IP:port]
+		--进入zk客户端后，相关操作
+			*查看节点
+				ls /
+			*创建节点
+				create /节点名称  创建的值   
+			*修改节点
+				set /节点名称 修改的值
+			*删除单个节点
+				delete /xxxxxx
+			*删除多个节点（子节点）
+				rmr /节点的名称
+			*获取节点中的数据
+				get /节点名称
+			*查询zk服务的当前状态及相关信息    （linux下使用）
+				echo ruok/stat | nc 127.0.0.1 2181
+			
+ 			
+
+
+
+
+
+									/*********************redis操作**********************/
+--主从配置
+	*拷贝redis.conf配置文件，配置内容
+		include redis.conf的路径位置(/usr/local/redis-4.0.10/redis.conf)
+		port xxxx
+			dbfilename xxxx
+	*成为某个实例的从服务器
+		slaveof <ip> <port>      ----slaveof 127.0.0.1 6379
+	*从从机变为主机	
+		slaveof no one
+	*查看主从情况
+		info replication
+	*开启哨兵模式
+		redis-sentinel redis-sentinel.conf
+	*开启集群(一个集群至少要有3个主节点)
+		--安装ruby及其与redis的相关依赖
+			yum install ruby
+			yum install rubygems ruby-devel rpm-build
+		--安装redis与ruby的接口
+			gem install redis
+		--在每个redis.conf配置文件中加入
+			cluster-enabled yes
+			cluster-config-file nodes-xxx.conf
+			cluster-node-timeout xxx
+		--开启全部redis服务之后，进入src目录执行
+			./redis-trib.rb create --replicas 1 192.168.206.128:6379 192.168.206.128:6380 192.168.206.128:6381 192.168.206.128:6382 192.168.206.128:6383 192.168.206.128:6384
+				注：
+					若报/usr/share/rubygems/rubygems/core_ext/kernel_require.rb:55:in `require': cannot load such file -- redis (LoadError)错误,说明redis与ruby的环境未装好
+					
+					若出现 [ERR] Sorry, can't connect to node 192.168.206.128:xxxx
+					将redis.conf文件中的bind所在行注释掉，并且将protected-mode 修改为 no 保存重启全部redis服务
+							
+	*以集群方式进去客户端
+		redis-cli -c -p 端口号			
+	*查看集群节点情况
+		cluster nodes
+	*计算键key应该被放置在哪个插槽中
+		cluster keyslot <key>
+	*返回插槽slot目前包含的键值对数量
+		cluster countkeysinslot <slot>
+	*返回count个slot槽中的键
+		cluster getkeysinslot <slot> <count>
+		
+		
+		
+		
+		
+		
+			
+											/*********************fastDFS操作**********************/
+--安装
+	*解压
+		第一步：进入/usr/local/fastDFS/路径下解压libfastcommon-1.0.43.tar.gz，进入解压后的目录，执行 ./make.sh && ./make.sh install
+				进入/usr/lib64检查是否存在 libfastcommon.so文件，存在则安装成功，将其复制到/usr/lib下 
+		第二部：进入/usr/local/fastDFS/解压fastDFS-5.05.tar.gz，进入解压后的目录，执行 ./make.sh && ./make.sh install
+					mkdir -p /usr/bin 
+					mkdir -p /etc/fdfs
+					cp -f fdfs_trackerd /usr/bin    (跟踪器路径)
+					if [ ! -f /etc/fdfs/tracker.conf.sample ]; then cp -f ../conf/tracker.conf /etc/fdfs/tracker.conf.sample; fi
+					mkdir -p /usr/bin
+					mkdir -p /etc/fdfs				
+					cp -f fdfs_storaged  /usr/bin   (存储节点路径)
+					if [ ! -f /etc/fdfs/storage.conf.sample ]; then cp -f ../conf/storage.conf /etc/fdfs/storage.conf.sample; fi
+					mkdir -p /usr/bin
+					mkdir -p /etc/fdfs
+					
+				安装成功后，将/usr/local/fastDFS/FastDFS/conf路径的所有文件拷贝到/etc/fdfs/路径下
+				修改/etc/fdfs/tracker.conf文件，将base_path的值改为 /usr/local/fastDFS/FastDFS/tracker (原tracker.conf目录所在路径，目录非固定，可自定)
+				修改/etc/fdfs/storage.conf文件，将base_path的值改为 /usr/local/fastDFS/FastDFS/storage (原storage.conf目录所在路径，目录非固定，可自定)
+												将store_path0的值改为 /usr/local/fastDFS/FastDFS/storage
+												将tracker_server的值改为 192.168.296.128:22122(自己主机ip+跟踪器端口22122)
+				
+				进入/usr/local/fastDFS/FastDFS/client目录下，将libfdfsclient.so文件拷贝到/usr/lib下
+				修改/etc/fdfs/client.conf文件，将base_path的值改为 /usr/local/fastDFS/FastDFS/client (tracker.conf目录所在路径，目录非固定)
+											   将tracker_server的值改为 192.168.296.128:22122(自己主机ip+跟踪器端口22122)
+				
+				
+		第三步：解压fastdfs-nginx-module-1.22.tar.gz后，进入scr目录下，修改config文件，去掉路径中的'local'字样 :%s\///g
+				将src目录下的mod_fastdfs.conf拷贝到/etc/fdfs/下，并修改
+					tracker_server=192.168.206.128:22122
+					url_have_group_name = true
+					store_path0=/usr/local/fastDFS/FastDFS/storage
+					
+		第四步：解压nginx-1.17.7.tar.gz之后，进入nginx目录，执行 ./configure --add-moudle=/usr/local/fastDFS/fastdfs-nginx-module/src
+				接着执行 make && make install
+				
+	
+
+--命令操作
+	*fastDFS
+		tracker： 
+			启动：/usr/bin/fdfs_trackerd  /etc/fdfs/tracker.conf    =====》fdfs_trackerd /etc/fdfs/tracker.conf
+			重启：/usr/bin/fdfs_trackerd  /etc/fdfs/tracker.conf restart
+		storage:
+			启动：/usr/bin/fdfs_storaged  /etc/fdfs/storage.conf
+		测试文件上传
+			/usr/bin/fdfs_test /etc/fdfs/client.conf upload 文件
+			外部无法访问该图片上传路径，需安装nginx+fasfDFS插件进行访问,进行第三步和第四步解压
+			配置nginx.conf
+				location /group1/M00{
+					ngx_fastdfs_module;
+				}
+		
+		查看storage是否已注册进tracker
+			fdfs_monitor /etc/fdfs/storage.conf
+
+		
+
+
+
+								/*********************OpenResty操作**********************/		
+--openresty与lua简单应用
+	eg: 
+		location / {
+            #root   html;
+            #index  index.html index.htm;
+			default_type text/html;     #告诉浏览器相应类型
+			content_by_lua_block{
+				ngx.say("hello , openresty");   //向浏览器发送一字符串
+			}
+        }
+	
+	1.default_type			  ---->相应类型
+	2.content_by_lua_block	  ---->写入Lua代码
+	3.content_by_lua_file     ---->引入lua文件 (绝对路径)
+	4.ngx.say()方法类似print方法
+	
+	eg2:
+		-- 获取get请求参数
+		local arg = ngx.req.get_uri_args();
+		for k,v in pairs(arg) do
+			ngx.say("[GET] key: ",k, ", v: ",v);
+			ngx.say("<br>");
+		end
+
+
+		--获取post请求参数
+		ngx.req.read_body(); --解析body参数前一定要先获取到body
+		local arg = ngx.req.get_post_args();
+		for k,v in pairs(arg) do
+			ngx.say("[POST] key: ",k,", v: ",v);
+			ngx.say("<br>");
+		end
+		
+		--获取Header
+		local headers = ngx.req.get_headers();
+		for k,v in pairs(headers) do 
+			ngx.say("[Header] key: ",k,", v: ",v);
+			ngx.say("<br>");
+		end
+		
+		--获取body信息
+		ngx.req.read_body(); --获取body前一定要先读入body信息，否则返回nil
+		local data = ngx.req.get_body();
+		ngx.say(data);
+		
+		
+		
+		
+		-------------------------------------------------ElasticSearch------------------------------------------------------
+1.ElasticSearch下载
+	https://blog.csdn.net/weixin_37281289/article/details/101483434
+	https://thans.cn/mirror/elasticsearch.html
+		
+2.linux下安装
+	1）使用root用户创建一个es用户
+		useradd es
+		passwd es
+		
+	2）切换es登录解压elasticSearch压缩文件即可使用
+	3）进入到/bin目录下执行./elasticSearch启动es服务
+	4）若想外部访问，则需修改config文件下的elasticeSearch.yml文件
+		network host 0.0.0.0
+	5）在root用户下修改配置文件
+		vim /etc/security/limit.conf，在末尾加入
+			*		soft nofile	65536
+			*		hard nofile	65536
+			*		soft nproc	4096
+			*		hard nproc	4096
+		
+		vim /etc/security/limits.d/20-nproc.conf 
+			*          soft    nproc     4096			========> es          soft    nproc     4096
+		
+		vim /etc/sysctl.conf
+			vm.max_map_count=655360
+			
+			输入sysctl -p 可检查是否修改成功！
+		
+	6）重新登录连接启动es服务
+	
+		可通过以下命令分别检查是否修改成功！
+		ulimit -Hn
+		ulimit -Sn
+		ulimit -Hu
+		ulimit -Su
+		
+
+3.kibana安装
+	1）国内下载地址
+			https://mirrors.huaweicloud.com/kibana/
+
+	2）启动./bin/kibana
+		进入可视化界面
+	
+	3）操作命令
+			创建索引
+				#PUT /索引名称
+			查看索引
+				#GET /_cat/indices【?v(详细内容)】
+				#GET /索引名称
+			删除索引
+				#DELETE /索引名称
+				#DELETE /*
+
+
+		
+		
+		-------------------------------------------------Docker容器------------------------------------------------------
+			阿里云开发者平台：https://dev.aliyun.com/search.html
+1.概念
+	*镜像
+		是一种轻量级、可执行的独立软件包，用来打包软件运行环境和基于运行环境开发的软件
+		 ，它包含运行某个软件所需的所有内容，包括代码、运行时、库、环境变量和配置文件
+		
+		
+		
+
+2.安装
+	CentOS6.5及以上
+		1）yum install -y epel-release
+		2）yum install -y docker-io
+			若安装失败，提示 no package docker-io，则使用yum install https://get.docker.com/rpm/1.7.1/centos-6/RPMS/x86_64/docker-engine-1.7.1-1.el6.x86_64.rpm方式安装
+		3）启动docker服务
+			service docker start
+		4）查看docker版本信息
+			docker version
+		5）在https://dev.aliyum.com/search.html中搜索docker容器，找到自己的镜像地址，并写入/etc/sysconfig/docker文件中
+				other_args="--registry-mirror=https://7q873qcx.mirror.aliyuncs.com"
+		6）重启docker服务
+
+3.docker常用命令
+	1）帮助命令
+			docker version
+			docker info
+			docker --help
+	2）镜像命令
+			*列出本地镜像
+				docker images [options]
+					options:
+						-a：列出本地所有镜像
+						-q：只显示镜像ID
+						--digests：显示镜像的摘要信息
+						--no-trunc：显示完成的镜像信息
+			*查找镜像
+				docker search [options] 镜像名 
+					options:
+						--no-trunc：显示完成的镜像信息
+						-s：列出收藏数不小于指定值的镜像
+						--aotumated：只列出aotumated build类型的镜像
+			*下载镜像
+				docker pull 镜像名[:tag(指定版本，不加默认最新版latest)]
+			*删除镜像
+				docker rmi -f 镜像ID/名称[:tag(指定版本，不加默认最新版latest)] [options]
+					options: 
+						删除全部 $(docker images -qa)
+						
+	3）容器命令
+			*创建并启动容器
+				docker run [options] images名/ID
+					options:
+						--name "容器新名字"，为容器指定一个名称
+						-d:	后台运行容器，并返回容器ID，即启动守护式容器
+						-i：以交互模式运行容器，通常与-t同时使用
+						-t: 为容器重新分配一个伪输入终端，通常与-i同时使用
+						-P：随机端口映射
+						-p：指定端口映射，有以下四种格式
+							ip: hostPort:containerPort
+							ip::containerPort
+							hostPort:containerPort
+							containerPort
+			*查看运行容器
+				docker ps [options]
+					options:
+						-a: 列出当前所有正在运行的容器+历史上运行过的
+						-l: 显示最近创建的容器
+						-n: 显示最近n个创建的容器
+						-q: 静默模式，只显示容器编号
+						--no-trunc：不截断输出
+			*退出容器
+				exit 容器停止并退出
+				ctrl+P+Q 容器退出但不停止
+			
+			*启动容器
+				docker start 容器ID
+				
+			*重启容器
+				docker restart 容器ID
+			
+			*停止容器
+				docker stop 容器ID
+			
+			*强制停止容器
+				docker kill 容器ID
+				
+			*删除已停止的容器
+				docker rm 容器ID
+				
+			*提交容器
+				docker commit [-a "作者"] [-m "描述信息"] 容器ID 容器新名称:自定义版本 
+				
+			*容器间数据同步
+				docker run -it --name "docker01" --volumes-from docker02 镜像ID
+				
+			****重要
+				#启动守护式容器
+					docker run -d 容器ID
+				#查看容器日志
+					docker logs -f -t tail 容器ID
+				#查看容器内运行的进程
+					docker top 容器ID
+				#查看容器内部细节
+					docker inspect 容器ID
+				#进入正在运行的容器并以命令模式交互
+					docker attach 容器ID
+					docker exec -it 容器ID /bin/bash
+				#从容器内拷贝文件到主机上
+					docker cp 容器ID:/容器内的文件路径 /主机上的路径
+		
+	4）容器数据卷
+		docker run -it -v /宿主机绝对路径目录:/容器内目录 镜像名-----可读写
+		docker run -it -v /宿主机绝对路径目录:/容器内的目录:ro 镜像名-----只读不可写
+		
+	5）自定义DockerFile
+	   *FROM centos
+
+		ENV mypath /usr/local
+
+		WORKDIR $mypath
+
+		RUN yum -y install vim
+		RUN yum -y install net-tools
+
+		EXPOSE 80
+
+		CMD echo $mypath
+		CMD echo "success-------------------dockerFile"
+		CMD /bin/bash
+		
+		*构建
+			docker build -f 自定义dockerFile文件 /该文件的绝对路径 -t 新名称:tag
+			注：
+				不能在/下进行构建，否 则提示“Error checking context is accessible: 'no permission to read from 'proc/sys/net/ipv4/route/flush''. 
+							Please check permissions and try again.“的错误
+							
+							
+	6）安装mysql
+
+			*docker pull mysql:5.7
+			*docker run -p 3306:3306 --name mysql 
+				-v /mysql/conf:/etc/mysql/conf.d 
+				-v /mysql/logs:/logs 
+				-v /mysql/data:/var/lib/mysql 
+				-e MYSQL_ROOT_PASSWORD=root  
+				-d mysql:5.7
+	7）安装redis
+			*docker pull redis:3.2
+			*docker run -p 6379:6379 
+				-v /redis/data:/data 
+				-v /redis/conf/redis.conf:/usr/local/etc/redis/redis.conf 
+				-d redis:3.2 
+				redis-server /usr/local/etc/redis/redis.conf 
+				--appendonly yes （开启aof）
+			*vim /redis/conf/redis.conf/redis.conf
+				将redis.conf配置文件的内容从其他地方拷贝进去
+					--可拷贝D:\javaEE\redis-4.0.10\redis-4.0.10下的redis.conf文件
+			
+	8）创建自定义网络
+			docker network create --driver bridge --subnet 192.168.0.0/16 --gateway 192.168.0.1 网络名称
+		
+	9）不同网络连通
+			docker network connect 网络名称 容器ID
+			
+			
+	10）安装docker-compose
+			curl -L https://get.daocloud.io/docker/compose/releases/download/1.25.5/docker-compose-'uname -s'-'uname -m' > /usr/local/bin/docker-compose
+			curl -L "https://github.com/docker/compose/releases/download/1.26.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose

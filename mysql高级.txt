@@ -1,0 +1,92 @@
+
+1.查询某数据库的增删改查情况
+	1）show status like 'Com_______'; (当前会话)
+	   show global status like 'Com_______'; (全局)
+	
+	2)show status like 'Innodb_rows_%'
+	
+
+2.定位低效率执行SQL
+	1）慢查询日志(操作执行结束后才可查看到结果)
+	
+	2）show processlist; (可实时查看结果)
+	
+3.explain分析执行计划
+	*explain SQL语句
+		--id: 表示表的执行顺序，id值越大，优先级越高
+		--select_type：
+			SIMPLE: 简单的select查询，不包含子查询或UNION
+			PRIMARY：查询中若包任何含复杂的子查询，最外层标记为该标识
+			SUBQUERY：在select或where列表中包含了子查询
+			DERIVED：在from列表中包含的子查询，被标记为DERIVED，MYSQL会递归执行这些子查询，
+						把结果放在临时表中
+			UNION：若第二个select出现在UNION之后，则标记为UNION，若UNION包含在from字句的查询中，
+						外层select将被标记为DERIVED
+			UNION RESULT：从UNION表获取结果的select
+		--type:
+			NULL：mysql不访问任何表、索引，直接返回结果
+			system：表只有一行记录（等于系统表），这是const类型的特例，一般不会出现
+			const: 表示通过索引一次就找到了，construction用于比较primary key或者unique索引，
+					因为只匹配一行数据，所以很快。如将主键置于where列表中，mysql就能将该查询转换为一个
+					常量。const会将主键或唯一索引的所有部分与常量进行比较
+			eq_ref：类似ref，区别在于使用的是唯一索引，使用主键的关联查询，关联查询出的记录只有一条，
+					常见于主键或唯一索引扫描
+			ref: 非唯一性索引扫描，返回匹配某个单独值的所有行。本质上也一种索引访问，返回所有匹配
+				  某个单独值的所有行（多个）
+			range: 只检索给定返回的行，使用一个索引来选择行。where之后出现between,<,>,in等操作
+			index: index与ALL的区别为index类型只是遍历了索引树，通常比ALL快，ALL是遍历数据文件
+			ALL：将遍历全表以找到匹配行
+			
+		--extra
+			using filesort
+				使用外部的索引进行排序，效率低
+			using temporary
+				使用临时表保存中间结果，常见于order by 和 group by，效率低
+			using index
+				表示相应的select操作使用了覆盖索引，避免访问表的数据行，效率高
+				
+
+4.show profile/profiles分析SQL
+	1）检查当前系统是否支持profile
+		select @@have_profiling;
+	2）检查是否开启了profile
+		select @@profiling;
+	3）开启profile
+		set profiling=1;(仅针对当前会话开启)
+	4）通过show profile for query_id来检查某个sql语句各阶段耗费时间的情况
+	
+
+5.trace分析优化器执行计划（对SQL的跟踪）
+	1）打开trace，并设置格式为json
+		set optimizer_trace="enabled=on",end_markers_in_json=on;
+	2）设置trace最大能够使用的内存大小，避免解析过程中因为默认内存过小而不能完整展示
+		set optimizer_trace_max_mem_size=1000000;
+	3）检查information_schema.optimizer_trace便可知道Mysql如何执行sql语句
+		select * from information_schema.optimizer_trace\G;
+	
+
+6.mysql查询缓存
+	1）查看当前mysql数据库是否支持查询缓存
+		show variables like 'have_query_cache';
+	2）查看当前mysql是否开启了查询缓存
+		show variables like 'query_cache_type';
+	3）查看当前缓存占用大小
+		show variables like 'query_cache_size';
+	4） 查询缓存状态变量
+		show status like 'Qcache%';
+		
+7.Innodb内存优化
+	innodb_buffer_pool_size=xxxm
+	在允许的条件下，该值越大，缓存命中率越高，访问Innodb表需要的磁盘I/O就越少，效率就越高
+	
+	
+	
+8.数据库备份
+	*mysqldump [options] db_name [tables]
+	*mysqldump [options] --database/-B db1 [db2 db3 ....]
+	*mysqldump [options] --all-databases/-A
+		--options:
+			-u,--user=name: 指定用户名
+			-p,--password[=name]: 指定密码
+			-h,--host=name: 指定主机
+			-p,--port=#： 指定连接端口
